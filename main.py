@@ -7,23 +7,22 @@ from telegram.ext import ApplicationBuilder
 from bot.telegram_bot import setup_handlers
 
 load_dotenv()
+
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    await application.bot.set_webhook(url=WEBHOOK_URL)
-    yield
-    # Shutdown (gerekirse buraya eklenebilir)
-
-app = FastAPI(lifespan=lifespan)
 
 application = ApplicationBuilder().token(TOKEN).build()
 setup_handlers(application)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await application.bot.set_webhook(url=WEBHOOK_URL)
+    yield
+
+app = FastAPI(lifespan=lifespan)
+
 @app.post("/webhook")
-async def webhook(req: Request):
+async def telegram_webhook(req: Request):
     data = await req.json()
     update = Update.de_json(data, application.bot)
     await application.process_update(update)
