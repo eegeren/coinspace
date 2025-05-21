@@ -1,9 +1,9 @@
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-from contextlib import asynccontextmanager
 from telegram import Update
 from telegram.ext import ApplicationBuilder
+from contextlib import asynccontextmanager
 from bot.telegram_bot import setup_handlers
 
 load_dotenv()
@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 @app.post("/webhook")
-async def webhook(request: Request):
+async def handle_webhook(request: Request):
     data = await request.json()
     update = Update.de_json(data, application.bot)
     await application.process_update(update)
