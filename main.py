@@ -22,8 +22,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 @app.post("/webhook")
-async def telegram_webhook(req: Request):
-    data = await req.json()
+async def webhook(request: Request):
+    data = await request.json()
     update = Update.de_json(data, application.bot)
     await application.process_update(update)
     return {"status": "ok"}
