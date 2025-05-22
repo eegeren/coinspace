@@ -12,7 +12,7 @@ load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🚀 Welcome to Coinspace!\nUse /help to see available commands.")
+    await update.message.reply_text("🛰️ Welcome to Coinspace!\nUse /help to see available commands.")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -22,7 +22,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/news COIN - News analysis only\n"
         "/tech COIN - Technical analysis only\n"
         "/signal COIN - Signal summary\n"
-        "/satinal - VIP Abonelik Bilgisi"
+        "/satinal - VIP Satın Alma Bilgisi"
     )
 
 async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -30,8 +30,19 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not coin:
         await update.message.reply_text("⚠️ Please provide a coin symbol (e.g., /analyze BTCUSDT).")
         return
-    result = generate_signal(coin)
-    message = format_signal_result(result)
+
+    signal_result = generate_signal(coin)
+    news_result = analyze_news(coin)
+    tech_result = get_technical_analysis(coin)
+
+    message = (
+        f"🧠 News Sentiment: {news_result['sentiment']}\n"
+        + "\n".join([f"- {h}" for h in news_result['headlines']]) + "\n\n"
+        f"📊 RSI: {tech_result['rsi']}\n"
+        f"📈 Technical Signal: {tech_result['signal']}\n\n"
+        f"✅ Final Signal: {signal_result['final_signal']}"
+    )
+
     await update.message.reply_text(message)
 
 async def news(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -64,10 +75,10 @@ async def satinal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("💳 VIP Satın Al", url="https://your-payment-link.com")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     msg = (
-        "🎟 *Coinspace VIP Abonelik Planları:*\n\n"
-        "• 1 Ay – 149₺\n"
-        "• 3 Ay – 399₺\n"
-        "• Ömür Boyu – 999₺\n\n"
+        "🎟 *Coinspace VIP Abonelik Planları:*\n"
+        "• 1 Ay – 29.99$\n"
+        "• 3 Ay – 69.99$\n"
+        "• Ömür Boyu – 299.99$\n\n"
         "🪙 *Kabul edilen ödemeler:*\n"
         "USDT (TRC20), BTC, DOGE\n\n"
         "🔐 Satın aldıktan sonra otomatik VIP erişim sağlanır."
@@ -76,6 +87,7 @@ async def satinal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def start_bot():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("analyze", analyze))
@@ -83,5 +95,6 @@ def start_bot():
     app.add_handler(CommandHandler("tech", tech))
     app.add_handler(CommandHandler("signal", signal))
     app.add_handler(CommandHandler("satinal", satinal))
+
     print("🚀 Coinspace Bot is running...")
     app.run_polling()
