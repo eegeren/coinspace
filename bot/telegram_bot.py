@@ -1,39 +1,30 @@
 import os
 import requests
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    ApplicationBuilder, CommandHandler, ContextTypes
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from analysis.signal_generator import generate_signal
 from analysis.news_analyzer import analyze_news
 from analysis.technical_analyzer import get_technical_analysis
-from utils.helpers import format_signal_result
 from config.config import PREMIUM_IDS
 
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 SUMMARY_CHAT_ID = os.getenv("SUMMARY_CHAT_ID")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
-PORT = int(os.getenv("PORT", 8000))
 
-# FastAPI uygulaması
-fastapi_app = FastAPI()
-
-# Telegram Application objesi
-telegram_app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+# Telegram bot uygulaması oluştur
+app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
 # Komutlar
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_chat.id
-    msg = (
-        "🛰️ Welcome to Coinspace!\nUse /help to see available commands.\n\n"
-        f"👤 *Your Chat ID:* `{user_id}`"
+    await update.message.reply_text(
+        f"🛰️ Welcome to Coinspace!\nUse /help to see available commands.\n\n"
+        f"👤 *Your Chat ID:* `{user_id}`",
+        parse_mode="Markdown"
     )
-    await update.message.reply_text(msg, parse_mode="Markdown")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -53,58 +44,54 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_premium = str(user_id) in PREMIUM_IDS
     coin = context.args[0].upper() if context.args else None
     if not coin:
-        await update.message.reply_text("⚠️ Please provide a coin symbol (e.g., /analyze BTCUSDT).")
-        return
-    signal_result = generate_signal(coin)
-    news_result = analyze_news(coin)
-    tech_result = get_technical_analysis(coin)
-    message = (
-        f"🧠 News Sentiment: {news_result['sentiment']}\n"
-        + "\n".join([f"- {h}" for h in news_result['headlines']]) + "\n\n"
-        f"📊 RSI: {tech_result['rsi']}\n"
-        f"📈 Technical Signal: {tech_result['signal']}\n\n"
+        return await update.message.reply_text("⚠️ Please provide a coin symbol (e.g., /analyze BTCUSDT).")
+
+    signal = generate_signal(coin)
+    news = analyze_news(coin)
+    tech = get_technical_analysis(coin)
+
+    msg = (
+        f"🧠 News Sentiment: {news['sentiment']}\n"
+        + "\n".join([f"- {h}" for h in news['headlines']]) + "\n\n"
+        f"📊 RSI: {tech['rsi']}\n"
+        f"📈 Technical Signal: {tech['signal']}\n\n"
     )
+
     if is_premium:
-        message += (
-            f"🔍 EMA Trend: {tech_result.get('ema_trend', 'N/A')}\n"
-            f"📉 MACD: {tech_result.get('macd', 'N/A')}\n"
-            f"🤖 AI Comment: {signal_result.get('ai_comment', 'N/A')}\n"
-            f"📥 Entry Point: {signal_result.get('entry', 'N/A')}\n"
-            f"🛑 Stop Loss: {signal_result.get('stop_loss', 'N/A')}\n"
-            f"🎯 Take Profit: {signal_result.get('take_profit', 'N/A')}\n"
+        msg += (
+            f"🔍 EMA Trend: {tech.get('ema_trend', 'N/A')}\n"
+            f"📉 MACD: {tech.get('macd', 'N/A')}\n"
+            f"🤖 AI Comment: {signal.get('ai_comment', 'N/A')}\n"
+            f"📥 Entry: {signal.get('entry', 'N/A')}\n"
+            f"🛑 Stop Loss: {signal.get('stop_loss', 'N/A')}\n"
+            f"🎯 Take Profit: {signal.get('take_profit', 'N/A')}\n"
         )
     else:
-        message += (
-            f"✅ Final Signal: {signal_result['final_signal']}\n\n"
-            "🔒 Unlock detailed analysis with /premium"
-        )
-    await update.message.reply_text(message)
+        msg += f"✅ Final Signal: {signal['final_signal']}\n\n🔒 Unlock more details with /premium"
+
+    await update.message.reply_text(msg, parse_mode="Markdown")
 
 async def news(update: Update, context: ContextTypes.DEFAULT_TYPE):
     coin = context.args[0].upper() if context.args else None
     if not coin:
-        await update.message.reply_text("⚠️ Please provide a coin symbol.")
-        return
-    result = analyze_news(coin)
-    msg = f"🧠 News Sentiment: {result['sentiment']}\n\n" + "\n".join([f"- {h}" for h in result['headlines']])
+        return await update.message.reply_text("⚠️ Please provide a coin symbol.")
+    news = analyze_news(coin)
+    msg = f"🧠 News Sentiment: {news['sentiment']}\n\n" + "\n".join([f"- {h}" for h in news['headlines']])
     await update.message.reply_text(msg)
 
 async def tech(update: Update, context: ContextTypes.DEFAULT_TYPE):
     coin = context.args[0].upper() if context.args else None
     if not coin:
-        await update.message.reply_text("⚠️ Please provide a coin symbol.")
-        return
-    result = get_technical_analysis(coin)
-    msg = f"📊 RSI: {result['rsi']}\n📈 Signal: {result['signal']}"
-    await update.message.reply_text(msg)
+        return await update.message.reply_text("⚠️ Please provide a coin symbol.")
+    tech = get_technical_analysis(coin)
+    await update.message.reply_text(f"📊 RSI: {tech['rsi']}\n📈 Signal: {tech['signal']}")
 
 async def signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     coin = context.args[0].upper() if context.args else None
     if not coin:
-        await update.message.reply_text("⚠️ Please provide a coin symbol.")
-        return
-    result = generate_signal(coin)
-    await update.message.reply_text(f"✅ Final Signal: {result['final_signal']}")
+        return await update.message.reply_text("⚠️ Please provide a coin symbol.")
+    signal = generate_signal(coin)
+    await update.message.reply_text(f"✅ Final Signal: {signal['final_signal']}")
 
 async def premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("💳 VIP Satın Al", url="https://your-payment-link.com")]]
@@ -114,15 +101,14 @@ async def premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• 1 Month – $29.99\n"
         "• 3 Months – $69.99\n"
         "• Lifetime – $299.99\n\n"
-        "🪙 Payments Accepted: USDT (TRC20), BTC, DOGE"
+        "🪙 Payments: USDT (TRC20), BTC, DOGE"
     )
     await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
 
+# Market Özeti
 def get_market_summary():
     try:
-        url = "https://api.binance.com/api/v3/ticker/24hr"
-        response = requests.get(url, timeout=10)
-        data = response.json()
+        data = requests.get("https://api.binance.com/api/v3/ticker/24hr").json()
         sorted_data = sorted(data, key=lambda x: float(x["priceChangePercent"]), reverse=True)
         return sorted_data[:3], sorted_data[-3:]
     except:
@@ -135,54 +121,44 @@ def format_market_summary(gainers, losers):
     msg += "\n".join([f"• {c['symbol']}: {float(c['priceChangePercent']):.2f}%" for c in losers])
     return msg
 
-async def send_market_summary(app):
-    gainers, losers = get_market_summary()
-    message = format_market_summary(gainers, losers)
-    if SUMMARY_CHAT_ID:
-        await app.bot.send_message(chat_id=SUMMARY_CHAT_ID, text=message, parse_mode="Markdown")
-
 async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    gainers, losers = get_market_summary()
-    message = format_market_summary(gainers, losers)
-    await update.message.reply_text(message, parse_mode="Markdown")
+    g, l = get_market_summary()
+    await update.message.reply_text(format_market_summary(g, l), parse_mode="Markdown")
 
 async def realtime(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_chat.id
     is_premium = str(user_id) in PREMIUM_IDS
-    url = "https://api.binance.com/api/v3/ticker/24hr"
-    response = requests.get(url)
-    data = sorted(response.json(), key=lambda x: abs(float(x["priceChangePercent"])), reverse=True)
-    public = data[:2]
-    premium = data[2:10]
+    data = requests.get("https://api.binance.com/api/v3/ticker/24hr").json()
+    sorted_data = sorted(data, key=lambda x: abs(float(x["priceChangePercent"])), reverse=True)
+    public, premium_data = sorted_data[:2], sorted_data[2:10]
     msg = "🌪 *Top Volatile Coins Today:*\n"
     msg += "\n".join([f"• {c['symbol']}: {float(c['priceChangePercent']):.2f}%" for c in public])
     if is_premium:
-        msg += "\n\n💎 *Premium Coins:*\n"
-        msg += "\n".join([f"• {c['symbol']}: {float(c['priceChangePercent']):.2f}%" for c in premium])
+        msg += "\n\n💎 *Premium Coins:*\n" + "\n".join([f"• {c['symbol']}: {float(c['priceChangePercent']):.2f}%" for c in premium_data])
     else:
-        msg += "\n\n🔒 Unlock more with /premium"
+        msg += "\n\n🔒 Unlock 8 more with /premium"
     await update.message.reply_text(msg, parse_mode="Markdown")
 
-# Komutları Telegram App'e ekle
-telegram_app.add_handler(CommandHandler("start", start))
-telegram_app.add_handler(CommandHandler("help", help_command))
-telegram_app.add_handler(CommandHandler("analyze", analyze))
-telegram_app.add_handler(CommandHandler("news", news))
-telegram_app.add_handler(CommandHandler("tech", tech))
-telegram_app.add_handler(CommandHandler("signal", signal))
-telegram_app.add_handler(CommandHandler("summary", summary))
-telegram_app.add_handler(CommandHandler("realtime", realtime))
-telegram_app.add_handler(CommandHandler("premium", premium))
+async def send_market_summary(app):
+    g, l = get_market_summary()
+    if SUMMARY_CHAT_ID:
+        await app.bot.send_message(chat_id=SUMMARY_CHAT_ID, text=format_market_summary(g, l), parse_mode="Markdown")
 
-# Günlük market özeti zamanlayıcı
+# Zamanlayıcı
 scheduler = BackgroundScheduler()
-scheduler.add_job(lambda: telegram_app.application.create_task(send_market_summary(telegram_app)), "cron", hour=21)
+scheduler.add_job(lambda: app.application.create_task(send_market_summary(app)), "cron", hour=21)
 scheduler.start()
 
-# Webhook endpoint – Telegram buraya POST atar
-@fastapi_app.post("/webhook")
-async def telegram_webhook(req: Request):
-    data = await req.json()
-    update = Update.de_json(data, telegram_app.bot)
-    await telegram_app.update_queue.put(update)
-    return {"ok": True}
+# Handler'ları ekle
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("help", help_command))
+app.add_handler(CommandHandler("analyze", analyze))
+app.add_handler(CommandHandler("news", news))
+app.add_handler(CommandHandler("tech", tech))
+app.add_handler(CommandHandler("signal", signal))
+app.add_handler(CommandHandler("summary", summary))
+app.add_handler(CommandHandler("realtime", realtime))
+app.add_handler(CommandHandler("premium", premium))
+
+# Dışa aktarılacak: FastAPI tarafından çağrılacak
+telegram_app = app
