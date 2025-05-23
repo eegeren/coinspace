@@ -16,9 +16,13 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 # Komutlar
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("✅ /start komutu geldi")
     user_id = update.effective_chat.id
     msg = (
-        "🛰️ Welcome to Coinspace!\nUse /help to see available commands.\n\n"
+        "🛰️ Welcome to Coinspace!
+Use /help to see available commands.
+
+"
         f"👤 *Your Chat ID:* `{user_id}`"
     )
     await update.message.reply_text(msg, parse_mode="Markdown")
@@ -81,11 +85,6 @@ async def news(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = analyze_news(coin)
     msg = f"🧠 News Sentiment: {result['sentiment']}\n\n" + "\n".join([f"- {h}" for h in result['headlines']])
     await update.message.reply_text(msg)
-
-    async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("✅ /start komutu geldi")
-    await update.message.reply_text("✅ Bot çalışıyor! Komut alındı.")
-
 
 async def tech(update: Update, context: ContextTypes.DEFAULT_TYPE):
     coin = context.args[0].upper() if context.args else None
