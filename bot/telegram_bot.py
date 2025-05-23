@@ -48,12 +48,13 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
     signal_result = generate_signal(coin)
     news_result = analyze_news(coin)
     tech_result = get_technical_analysis(coin)
+    price = signal_result.get("price", "N/A")
 
     message = (
         f"🧠 News Sentiment: {news_result['sentiment']}\n"
         + "\n".join([f"- {h}" for h in news_result['headlines']]) + "\n\n"
         f"📊 RSI: {tech_result['rsi']}\n"
-        f"📈 Technical Signal: {tech_result['signal']}\n\n"
+        f"📈 Technical Signal: {tech_result['signal']}\n"
     )
 
     if is_premium:
@@ -67,11 +68,11 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     else:
         message += (
-            f"✅ Final Signal: {signal_result['final_signal']}\n\n"
-            "🔒 Unlock detailed analysis with /premium"
+            f"\n💵 Current Price: {price}\n"
+            "🔒 Unlock full entry/exit analysis and AI insights with /premium"
         )
 
-    await update.message.reply_text(message)
+    await update.message.reply_text(message, parse_mode="Markdown")
 
 async def news(update: Update, context: ContextTypes.DEFAULT_TYPE):
     coin = context.args[0].upper() if context.args else None
@@ -113,6 +114,7 @@ async def premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
 
+# Market Özeti
 def get_market_summary():
     try:
         url = "https://api.binance.com/api/v3/ticker/24hr"
@@ -133,7 +135,6 @@ def format_market_summary(gainers, losers):
     message += "\n📉 *Top Losers:*\n"
     for coin in losers:
         message += f"• {coin['symbol']}: {float(coin['priceChangePercent']):.2f}%\n"
-    message += "\n🕘 This summary is sent daily at 21:00."
     return message
 
 async def send_market_summary(app):
@@ -171,6 +172,7 @@ async def realtime(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await update.message.reply_text("⚠️ Couldn't fetch real-time data. Try again later.")
 
+# Bot Başlatıcı
 def start_bot():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
