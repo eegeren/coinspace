@@ -2,18 +2,17 @@ import os
 import requests
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from apscheduler.schedulers.background import BackgroundScheduler
+from telegram.ext import Application, CommandHandler, ContextTypes
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from analysis.signal_generator import generate_signal
 from analysis.news_analyzer import analyze_news
 from analysis.technical_analyzer import get_technical_analysis
 from utils.helpers import format_signal_result
-from config.config import PREMIUM_IDS
+from config.config import PREMIUM_IDS, SUMMARY_CHAT_ID
 
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-SUMMARY_CHAT_ID = os.getenv("SUMMARY_CHAT_ID")
 
 # Komutlar
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -114,7 +113,6 @@ async def premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
 
-# Market Özeti
 def get_market_summary():
     try:
         url = "https://api.binance.com/api/v3/ticker/24hr"
@@ -137,11 +135,11 @@ def format_market_summary(gainers, losers):
         message += f"• {coin['symbol']}: {float(coin['priceChangePercent']):.2f}%\n"
     return message
 
-async def send_market_summary(app):
+async def send_market_summary(bot):
     gainers, losers = get_market_summary()
     message = format_market_summary(gainers, losers)
     if SUMMARY_CHAT_ID:
-        await app.bot.send_message(chat_id=SUMMARY_CHAT_ID, text=message, parse_mode="Markdown")
+        await bot.send_message(chat_id=SUMMARY_CHAT_ID, text=message, parse_mode="Markdown")
 
 async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     gainers, losers = get_market_summary()
@@ -172,10 +170,7 @@ async def realtime(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await update.message.reply_text("⚠️ Couldn't fetch real-time data. Try again later.")
 
-# Bot Başlatıcı
-def start_bot():
-    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-
+def setup_handlers(app: Application):
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("analyze", analyze))
@@ -186,9 +181,8 @@ def start_bot():
     app.add_handler(CommandHandler("summary", summary))
     app.add_handler(CommandHandler("realtime", realtime))
 
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(lambda: app.application.create_task(send_market_summary(app)), "cron", hour=21, minute=0)
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(lambda: app.create_task(send_market_summary(app.bot)), "cron", hour=21, minute=0)
     scheduler.start()
 
-    print("🚀 Coinspace Bot is running...")
-    app.run_polling()
+    print("✅ Handlers and scheduler loaded (Webhook mode)")
