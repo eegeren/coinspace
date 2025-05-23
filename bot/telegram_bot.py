@@ -15,7 +15,7 @@ load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 SUMMARY_CHAT_ID = os.getenv("SUMMARY_CHAT_ID")
 
-# Komutlar
+# Commands
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_chat.id
     msg = (
@@ -32,7 +32,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/news COIN - News analysis only\n"
         "/tech COIN - Technical analysis only\n"
         "/signal COIN - Signal summary\n"
-        "/satinal - 💎 VIP Access – Unlock Full Power"
+        "/summary - Market Summary on Demand\n"
+        "/premium - VIP Access – Unlock Full Power"
     )
 
 async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -81,7 +82,7 @@ async def signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = generate_signal(coin)
     await update.message.reply_text(f"✅ Final Signal: {result['final_signal']}")
 
-async def satinal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("💳 VIP Satın Al", url="https://your-payment-link.com")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     msg = (
@@ -95,7 +96,7 @@ async def satinal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
 
-# Günlük Market Özeti
+# Daily Market Summary
 def get_market_summary():
     try:
         url = "https://api.binance.com/api/v3/ticker/24hr"
@@ -125,7 +126,13 @@ async def send_market_summary(app):
     if SUMMARY_CHAT_ID:
         await app.bot.send_message(chat_id=SUMMARY_CHAT_ID, text=message, parse_mode="Markdown")
 
-# Bot Başlatıcı
+# Command for on-demand market summary
+async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    gainers, losers = get_market_summary()
+    message = format_market_summary(gainers, losers)
+    await update.message.reply_text(message, parse_mode="Markdown")
+
+# Bot Starter
 def start_bot():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
@@ -135,7 +142,8 @@ def start_bot():
     app.add_handler(CommandHandler("news", news))
     app.add_handler(CommandHandler("tech", tech))
     app.add_handler(CommandHandler("signal", signal))
-    app.add_handler(CommandHandler("satinal", satinal))
+    app.add_handler(CommandHandler("premium", premium))
+    app.add_handler(CommandHandler("summary", summary))  # NEW: /summary command
 
     scheduler = BackgroundScheduler()
     scheduler.add_job(lambda: app.application.create_task(send_market_summary(app)), "cron", hour=21, minute=0)
