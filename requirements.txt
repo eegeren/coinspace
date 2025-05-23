@@ -3,4 +3,5 @@ fastapi
 uvicorn
 requests
 python-dotenv
+openai
 yfinance
