@@ -1,8 +1,6 @@
-python-telegram-bot[webhooks]
-fastapi
-uvicorn
+python-telegram-bot
 requests
 python-dotenv
+apscheduler
 openai
 yfinance
-apscheduler
