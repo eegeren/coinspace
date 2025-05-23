@@ -1,27 +1,26 @@
 import requests
 
-def get_technical_analysis(coin: str) -> dict:
-    symbol = coin.upper()
-    url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval=1h&limit=100"
+def get_technical_analysis(coin):
+    url = f"https://api.binance.com/api/v3/klines?symbol={coin}&interval=1h&limit=100"
     response = requests.get(url)
     data = response.json()
 
-    closes = [float(candle[4]) for candle in data]
+    close_prices = [float(kline[4]) for kline in data]
+    deltas = [close_prices[i] - close_prices[i - 1] for i in range(1, len(close_prices))]
 
-    if len(closes) < 15:
-        return {"rsi": None, "signal": "Not enough data"}
-
-    delta = [closes[i+1] - closes[i] for i in range(len(closes)-1)]
-    gains = sum([d for d in delta if d > 0]) / 14
-    losses = abs(sum([d for d in delta if d < 0])) / 14
-    rs = gains / losses if losses != 0 else 0
+    gain = sum(d for d in deltas if d > 0) / 14
+    loss = -sum(d for d in deltas if d < 0) / 14
+    rs = gain / loss if loss != 0 else 0
     rsi = 100 - (100 / (1 + rs))
 
     if rsi < 30:
-        signal = "Buy"
+        signal = "BUY"
     elif rsi > 70:
-        signal = "Sell"
+        signal = "SELL"
     else:
-        signal = "Hold"
+        signal = "HOLD"
 
-    return {"rsi": round(rsi, 2), "signal": signal}
+    return {
+        "rsi": round(rsi, 2),
+        "signal": signal
+    }

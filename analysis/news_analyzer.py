@@ -1,51 +1,44 @@
-import os
 import requests
+import os
 from dotenv import load_dotenv
+import openai
 
 load_dotenv()
-CRYPTO_PANIC_API_KEY = os.getenv("CRYPTO_PANIC_API_KEY")
+CRYPTO_PANIC_API = os.getenv("CRYPTO_PANIC_API")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-def analyze_news(coin: str) -> dict:
-    import openai
-    openai.api_key = OPENAI_API_KEY
+openai.api_key = OPENAI_API_KEY
 
-    url = f"https://cryptopanic.com/api/v1/posts/?auth_token={CRYPTO_PANIC_API_KEY}&currencies={coin}&public=true"
+def analyze_news(coin):
+    url = f"https://cryptopanic.com/api/v1/posts/?auth_token={CRYPTO_PANIC_API}&currencies={coin}&public=true"
     response = requests.get(url)
-    data = response.json()
+    articles = response.json().get("results", [])[:5]
 
-    headlines = []
+    headlines = [article["title"] for article in articles]
+
     sentiment_score = 0
-    analyzed_count = 0
+    for headline in headlines:
+        sentiment = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a financial sentiment analyzer."},
+                {"role": "user", "content": f"Determine if this news is Positive, Negative or Neutral: '{headline}'"}
+            ]
+        ).choices[0].message.content.strip().lower()
 
-    for post in data.get("results", [])[:5]:
-        title = post.get("title", "")
-        if not title:
-            continue
-        headlines.append(title)
-        prompt = f"Haber: {title}\nBu haber {coin} hakkında olumlu mu, olumsuz mu, yoksa tarafsız mı? Sadece tek kelimeyle cevap ver: Olumlu, Olumsuz, Tarafsız."
-        try:
-            completion = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}]
-            )
-            result = completion.choices[0].message.content.strip().lower()
-            if "olumlu" in result:
-                sentiment_score += 1
-            elif "olumsuz" in result:
-                sentiment_score -= 1
-            analyzed_count += 1
-        except Exception:
-            continue
+        if "positive" in sentiment:
+            sentiment_score += 1
+        elif "negative" in sentiment:
+            sentiment_score -= 1
 
-    final_sentiment = "Tarafsız"
-    if sentiment_score >= 1:
-        final_sentiment = "Olumlu"
-    elif sentiment_score <= -1:
-        final_sentiment = "Olumsuz"
+    if sentiment_score >= 2:
+        final_sentiment = "Positive"
+    elif sentiment_score <= -2:
+        final_sentiment = "Negative"
+    else:
+        final_sentiment = "Neutral"
 
     return {
-        "score": sentiment_score,
         "sentiment": final_sentiment,
         "headlines": headlines
     }
