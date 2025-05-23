@@ -6,6 +6,7 @@ from telegram.ext import (
     ApplicationBuilder, CommandHandler, ContextTypes
 )
 from apscheduler.schedulers.background import BackgroundScheduler
+
 from analysis.signal_generator import generate_signal
 from analysis.news_analyzer import analyze_news
 from analysis.technical_analyzer import get_technical_analysis
@@ -15,7 +16,6 @@ from config.config import PREMIUM_IDS
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 SUMMARY_CHAT_ID = os.getenv("SUMMARY_CHAT_ID")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # örnek: https://coinspace.onrender.com/webhook
 
 # Komutlar
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -148,8 +148,8 @@ async def realtime(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg += "\n\n🔒 Unlock more with /premium"
     await update.message.reply_text(msg, parse_mode="Markdown")
 
-# Webhook ile başlat
-def start_bot():
+# Uygulama objesi (FastAPI için dışa aktarılacak)
+def build_bot_app():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -166,10 +166,10 @@ def start_bot():
     scheduler.add_job(lambda: app.application.create_task(send_market_summary(app)), "cron", hour=21)
     scheduler.start()
 
-    print("🚀 Coinspace Webhook Bot is running...")
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=int(os.getenv("PORT", "8000")),
-        webhook_url=os.getenv("WEBHOOK_URL")
+    return app
 
-    )
+async def send_market_summary(app):
+    gainers, losers = get_market_summary()
+    message = format_market_summary(gainers, losers)
+    if SUMMARY_CHAT_ID:
+        await app.bot.send_message(chat_id=SUMMARY_CHAT_ID, text=message, parse_mode="Markdown")
