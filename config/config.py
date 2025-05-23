@@ -12,4 +12,4 @@ RSI_OVERBOUGHT = 70
 RSI_OVERSOLD = 30
 
 # Premium kullanıcıların Telegram ID'leri
-PREMIUM_IDS = ["123456789"]
+PREMIUM_IDS = ["1916984442"]
