@@ -82,6 +82,11 @@ async def news(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = f"🧠 News Sentiment: {result['sentiment']}\n\n" + "\n".join([f"- {h}" for h in result['headlines']])
     await update.message.reply_text(msg)
 
+    async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("✅ /start komutu geldi")
+    await update.message.reply_text("✅ Bot çalışıyor! Komut alındı.")
+
+
 async def tech(update: Update, context: ContextTypes.DEFAULT_TYPE):
     coin = context.args[0].upper() if context.args else None
     if not coin:
