@@ -1,6 +1,7 @@
 import os
 import requests
 from dotenv import load_dotenv
+from fastapi import FastAPI, Request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, ContextTypes
@@ -16,6 +17,14 @@ from config.config import PREMIUM_IDS
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 SUMMARY_CHAT_ID = os.getenv("SUMMARY_CHAT_ID")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+PORT = int(os.getenv("PORT", 8000))
+
+# FastAPI uygulaması
+fastapi_app = FastAPI()
+
+# Telegram Application objesi
+telegram_app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
 # Komutlar
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -126,6 +135,12 @@ def format_market_summary(gainers, losers):
     msg += "\n".join([f"• {c['symbol']}: {float(c['priceChangePercent']):.2f}%" for c in losers])
     return msg
 
+async def send_market_summary(app):
+    gainers, losers = get_market_summary()
+    message = format_market_summary(gainers, losers)
+    if SUMMARY_CHAT_ID:
+        await app.bot.send_message(chat_id=SUMMARY_CHAT_ID, text=message, parse_mode="Markdown")
+
 async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     gainers, losers = get_market_summary()
     message = format_market_summary(gainers, losers)
@@ -148,28 +163,26 @@ async def realtime(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg += "\n\n🔒 Unlock more with /premium"
     await update.message.reply_text(msg, parse_mode="Markdown")
 
-# Uygulama objesi (FastAPI için dışa aktarılacak)
-def build_bot_app():
-    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+# Komutları Telegram App'e ekle
+telegram_app.add_handler(CommandHandler("start", start))
+telegram_app.add_handler(CommandHandler("help", help_command))
+telegram_app.add_handler(CommandHandler("analyze", analyze))
+telegram_app.add_handler(CommandHandler("news", news))
+telegram_app.add_handler(CommandHandler("tech", tech))
+telegram_app.add_handler(CommandHandler("signal", signal))
+telegram_app.add_handler(CommandHandler("summary", summary))
+telegram_app.add_handler(CommandHandler("realtime", realtime))
+telegram_app.add_handler(CommandHandler("premium", premium))
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("analyze", analyze))
-    app.add_handler(CommandHandler("news", news))
-    app.add_handler(CommandHandler("tech", tech))
-    app.add_handler(CommandHandler("signal", signal))
-    app.add_handler(CommandHandler("summary", summary))
-    app.add_handler(CommandHandler("realtime", realtime))
-    app.add_handler(CommandHandler("premium", premium))
+# Günlük market özeti zamanlayıcı
+scheduler = BackgroundScheduler()
+scheduler.add_job(lambda: telegram_app.application.create_task(send_market_summary(telegram_app)), "cron", hour=21)
+scheduler.start()
 
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(lambda: app.application.create_task(send_market_summary(app)), "cron", hour=21)
-    scheduler.start()
-
-    return app
-
-async def send_market_summary(app):
-    gainers, losers = get_market_summary()
-    message = format_market_summary(gainers, losers)
-    if SUMMARY_CHAT_ID:
-        await app.bot.send_message(chat_id=SUMMARY_CHAT_ID, text=message, parse_mode="Markdown")
+# Webhook endpoint – Telegram buraya POST atar
+@fastapi_app.post("/webhook")
+async def telegram_webhook(req: Request):
+    data = await req.json()
+    update = Update.de_json(data, telegram_app.bot)
+    await telegram_app.update_queue.put(update)
+    return {"ok": True}
