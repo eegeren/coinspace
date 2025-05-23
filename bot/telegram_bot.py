@@ -182,6 +182,8 @@ def setup_handlers(app: Application):
     app.add_handler(CommandHandler("premium", premium))
     app.add_handler(CommandHandler("summary", summary))
     app.add_handler(CommandHandler("realtime", realtime))
+    print("📌 Komutlar başarıyla yüklendi")
+
 
     scheduler = AsyncIOScheduler()
     scheduler.add_job(lambda: app.create_task(send_market_summary(app.bot)), "cron", hour=21, minute=0)
