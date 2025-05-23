@@ -15,7 +15,6 @@ load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 SUMMARY_CHAT_ID = os.getenv("SUMMARY_CHAT_ID")
 
-# Commands
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_chat.id
     msg = (
@@ -33,6 +32,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/tech COIN - Technical analysis only\n"
         "/signal COIN - Signal summary\n"
         "/summary - Market Summary on Demand\n"
+        "/realtime - Most Volatile Coins\n"
         "/premium - VIP Access – Unlock Full Power"
     )
 
@@ -41,11 +41,9 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not coin:
         await update.message.reply_text("⚠️ Please provide a coin symbol (e.g., /analyze BTCUSDT).")
         return
-
     signal_result = generate_signal(coin)
     news_result = analyze_news(coin)
     tech_result = get_technical_analysis(coin)
-
     message = (
         f"🧠 News Sentiment: {news_result['sentiment']}\n"
         + "\n".join([f"- {h}" for h in news_result['headlines']]) + "\n\n"
@@ -53,7 +51,6 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📈 Technical Signal: {tech_result['signal']}\n\n"
         f"✅ Final Signal: {signal_result['final_signal']}"
     )
-
     await update.message.reply_text(message)
 
 async def news(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -96,7 +93,6 @@ async def premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
 
-# Daily Market Summary
 def get_market_summary():
     try:
         url = "https://api.binance.com/api/v3/ticker/24hr"
@@ -126,13 +122,35 @@ async def send_market_summary(app):
     if SUMMARY_CHAT_ID:
         await app.bot.send_message(chat_id=SUMMARY_CHAT_ID, text=message, parse_mode="Markdown")
 
-# Command for on-demand market summary
 async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     gainers, losers = get_market_summary()
     message = format_market_summary(gainers, losers)
     await update.message.reply_text(message, parse_mode="Markdown")
 
-# Bot Starter
+async def realtime(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_chat.id
+    is_premium = str(user_id) in PREMIUM_IDS
+    try:
+        url = "https://api.binance.com/api/v3/ticker/24hr"
+        response = requests.get(url, timeout=10)
+        data = response.json()
+        sorted_data = sorted(data, key=lambda x: abs(float(x["priceChangePercent"])), reverse=True)
+        volatile_coins = sorted_data[:10]
+        public_list = volatile_coins[:2]
+        premium_list = volatile_coins[2:]
+        message = "🌪 *Most Volatile Coins Today:*\n\n"
+        for coin in public_list:
+            message += f"• {coin['symbol']}: {float(coin['priceChangePercent']):.2f}%\n"
+        if is_premium:
+            message += "\n💎 *Premium Insights:*\n"
+            for coin in premium_list:
+                message += f"• {coin['symbol']}: {float(coin['priceChangePercent']):.2f}%\n"
+        else:
+            message += "\n🔒 Unlock 8 more coins with /premium"
+        await update.message.reply_text(message, parse_mode="Markdown")
+    except Exception:
+        await update.message.reply_text("⚠️ Couldn't fetch real-time data. Try again later.")
+
 def start_bot():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
@@ -143,7 +161,8 @@ def start_bot():
     app.add_handler(CommandHandler("tech", tech))
     app.add_handler(CommandHandler("signal", signal))
     app.add_handler(CommandHandler("premium", premium))
-    app.add_handler(CommandHandler("summary", summary))  # NEW: /summary command
+    app.add_handler(CommandHandler("summary", summary))
+    app.add_handler(CommandHandler("realtime", realtime))
 
     scheduler = BackgroundScheduler()
     scheduler.add_job(lambda: app.application.create_task(send_market_summary(app)), "cron", hour=21, minute=0)
