@@ -15,6 +15,7 @@ load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 SUMMARY_CHAT_ID = os.getenv("SUMMARY_CHAT_ID")
 
+# Komutlar
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_chat.id
     msg = (
@@ -37,20 +38,39 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_chat.id
+    is_premium = str(user_id) in PREMIUM_IDS
     coin = context.args[0].upper() if context.args else None
     if not coin:
         await update.message.reply_text("⚠️ Please provide a coin symbol (e.g., /analyze BTCUSDT).")
         return
+
     signal_result = generate_signal(coin)
     news_result = analyze_news(coin)
     tech_result = get_technical_analysis(coin)
+
     message = (
         f"🧠 News Sentiment: {news_result['sentiment']}\n"
         + "\n".join([f"- {h}" for h in news_result['headlines']]) + "\n\n"
         f"📊 RSI: {tech_result['rsi']}\n"
         f"📈 Technical Signal: {tech_result['signal']}\n\n"
-        f"✅ Final Signal: {signal_result['final_signal']}"
     )
+
+    if is_premium:
+        message += (
+            f"🔍 EMA Trend: {tech_result.get('ema_trend', 'N/A')}\n"
+            f"📉 MACD: {tech_result.get('macd', 'N/A')}\n"
+            f"🤖 AI Comment: {signal_result.get('ai_comment', 'N/A')}\n"
+            f"📥 Entry Point: {signal_result.get('entry', 'N/A')}\n"
+            f"🛑 Stop Loss: {signal_result.get('stop_loss', 'N/A')}\n"
+            f"🎯 Take Profit: {signal_result.get('take_profit', 'N/A')}\n"
+        )
+    else:
+        message += (
+            f"✅ Final Signal: {signal_result['final_signal']}\n\n"
+            "🔒 Unlock detailed analysis with /premium"
+        )
+
     await update.message.reply_text(message)
 
 async def news(update: Update, context: ContextTypes.DEFAULT_TYPE):
