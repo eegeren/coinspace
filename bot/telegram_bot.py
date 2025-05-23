@@ -19,13 +19,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("✅ /start komutu geldi")
     user_id = update.effective_chat.id
     msg = (
-        "🛰️ Welcome to Coinspace!
-Use /help to see available commands.
-
-"
+        "🛰️ Welcome to Coinspace!\nUse /help to see available commands.\n\n"
         f"👤 *Your Chat ID:* `{user_id}`"
     )
     await update.message.reply_text(msg, parse_mode="Markdown")
+
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
