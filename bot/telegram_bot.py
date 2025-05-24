@@ -10,9 +10,45 @@ from analysis.news_analyzer import analyze_news
 from analysis.technical_analyzer import get_technical_analysis
 from utils.helpers import format_signal_result
 from config.config import PREMIUM_IDS, SUMMARY_CHAT_ID
+from utils.watchlist_manager import add_coin_to_watchlist, remove_coin_from_watchlist, get_user_watchlist
+
+
 
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+
+async def follow(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_chat.id
+    coin = context.args[0].upper() if context.args else None
+    if not coin:
+        await update.message.reply_text("⚠️ Please specify a coin to follow (e.g., /follow BTCUSDT).")
+        return
+
+    if add_coin_to_watchlist(user_id, coin):
+        await update.message.reply_text(f"✅ {coin} added to your watchlist.")
+    else:
+        await update.message.reply_text(f"ℹ️ {coin} is already in your watchlist.")
+
+async def unfollow(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_chat.id
+    coin = context.args[0].upper() if context.args else None
+    if not coin:
+        await update.message.reply_text("⚠️ Please specify a coin to remove (e.g., /unfollow BTCUSDT).")
+        return
+
+    if remove_coin_from_watchlist(user_id, coin):
+        await update.message.reply_text(f"🗑️ {coin} removed from your watchlist.")
+    else:
+        await update.message.reply_text(f"⚠️ {coin} is not in your watchlist.")
+
+async def watchlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_chat.id
+    coins = get_user_watchlist(user_id)
+    if coins:
+        coin_list = "\n".join([f"• {c}" for c in coins])
+        await update.message.reply_text(f"📋 Your Watchlist:\n{coin_list}")
+    else:
+        await update.message.reply_text("🔍 Your watchlist is empty.")
 
 # Komutlar
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -184,6 +220,10 @@ def setup_handlers(app: Application):
     app.add_handler(CommandHandler("premium", premium))
     app.add_handler(CommandHandler("summary", summary))
     app.add_handler(CommandHandler("realtime", realtime))
+    app.add_handler(CommandHandler("follow", follow))
+    app.add_handler(CommandHandler("unfollow", unfollow))
+    app.add_handler(CommandHandler("watchlist", watchlist))
+
     print("📌 Komutlar başarıyla yüklendi")
 
     scheduler = AsyncIOScheduler()
