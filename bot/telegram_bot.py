@@ -74,6 +74,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/signal COIN - Signal summary\n"
         "/summary - Market Summary on Demand\n"
         "/realtime - Most Volatile Coins\n"
+        "/follow COIN - Add coin to your watchlist\n"
+        "/unfollow COIN - Remove coin from your watchlist\n"
+        "/watchlist - Show your watchlist\n"
         "/premium - VIP Access – Unlock Full Power"
     )
 
