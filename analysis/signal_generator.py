@@ -29,7 +29,7 @@ def generate_signal(coin):
     else:
         final_signal = "HOLD"
 
-    # Fiyat, Entry, SL, TP
+    # Fiyat verisi, entry, SL, TP
     try:
         price_url = f"https://api.binance.com/api/v3/ticker/price?symbol={coin.upper()}"
         price_response = requests.get(price_url, timeout=10)
@@ -44,25 +44,27 @@ def generate_signal(coin):
         entry = stop_loss = take_profit = "N/A"
 
     # Kaldıraç önerisi
-    if final_signal == "BUY" or final_signal == "SELL":
-        leverage = "x5 – Uygun risk, dikkatli ol."
+    if final_signal == "BUY":
+        leverage = "5x-10x önerilir (orta risk)"
+    elif final_signal == "SELL":
+        leverage = "3x-5x önerilir (düşük risk)"
     else:
-        leverage = "x1 – Net sinyal yok, düşük risk önerilir."
+        leverage = "Kaldıraç önerilmez (belirsiz trend)"
 
-    # AI Comment
+    # AI Comment üret
     try:
         prompt = f"""
 Coin: {coin}
 Haber duyarlılığı: {news_result['sentiment']}
-Teknik sinyal: {tech_result['signal']}
+Teknik analiz sinyali: {tech_result['signal']}
 Genel öneri: {final_signal}
 
-Yatırımcı dostu, kısa, içten ve sade bir analiz yorumu yap. Tahminde bulunma.
+Kullanıcı dostu, kısa, net, içten bir analiz özeti yap. Tahminde bulunma. Yatırım tavsiyesi verme.
 """
         chat_response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Sen Coinspace adında bir kripto analiz asistanısın."},
+                {"role": "system", "content": "Sen Coinspace adlı kullanıcı dostu bir kripto analiz asistanısın."},
                 {"role": "user", "content": prompt}
             ]
         )

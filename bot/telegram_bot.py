@@ -100,16 +100,17 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📈 Technical Signal: {tech_result['signal']}\n"
     )
 
-    if is_premium:
-        message += (
-            f"🔍 EMA Trend: {tech_result.get('ema_trend', 'N/A')}\n"
-            f"📉 MACD: {tech_result.get('macd', 'N/A')}\n"
-            f"🤖 AI Comment: {signal_result.get('ai_comment', 'N/A')}\n"
-            f"📥 Entry Point: {signal_result.get('entry', 'N/A')}\n"
-            f"🛑 Stop Loss: {signal_result.get('stop_loss', 'N/A')}\n"
-            f"🎯 Take Profit: {signal_result.get('take_profit', 'N/A')}\n"
-            f"⚖️ Leverage Suggestion: {signal_result.get('leverage', 'N/A')}"
-        )
+   if is_premium:
+    message += (
+        f"🔍 EMA Trend: {tech_result.get('ema_trend', 'N/A')}\n"
+        f"📉 MACD: {tech_result.get('macd', 'N/A')}\n"
+        f"📥 Entry Point: {signal_result.get('entry', 'N/A')}\n"
+        f"🛑 Stop Loss: {signal_result.get('stop_loss', 'N/A')}\n"
+        f"🎯 Take Profit: {signal_result.get('take_profit', 'N/A')}\n"
+        f"⚖️ Leverage Suggestion: {signal_result.get('leverage', 'N/A')}\n\n"
+        f"🤖 *AI Comment:*\n_{signal_result.get('ai_comment', 'N/A')}_"
+    )
+
     else:
         message += (
             f"\n💵 Current Price: {price}\n"
