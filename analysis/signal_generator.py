@@ -1,16 +1,17 @@
 from analysis.news_analyzer import analyze_news
 from analysis.technical_analyzer import get_technical_analysis
-from openai import OpenAI
+import openai
 import os
 import requests
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def generate_signal(coin):
     news_result = analyze_news(coin)
     tech_result = get_technical_analysis(coin)
 
     sentiment_score = 0
+
     if news_result["sentiment"] == "Positive":
         sentiment_score += 1
     elif news_result["sentiment"] == "Negative":
@@ -28,6 +29,7 @@ def generate_signal(coin):
     else:
         final_signal = "HOLD"
 
+    # Fiyat, Entry, SL, TP
     try:
         price_url = f"https://api.binance.com/api/v3/ticker/price?symbol={coin.upper()}"
         price_response = requests.get(price_url, timeout=10)
@@ -41,38 +43,33 @@ def generate_signal(coin):
         price = "N/A"
         entry = stop_loss = take_profit = "N/A"
 
-    # AI Yorumu
-    try:
-        ai_prompt = f"""
-Sen Coinspace adında kullanıcı dostu bir kripto analiz asistanısın.
+    # Kaldıraç önerisi
+    if final_signal == "BUY" or final_signal == "SELL":
+        leverage = "x5 – Uygun risk, dikkatli ol."
+    else:
+        leverage = "x1 – Net sinyal yok, düşük risk önerilir."
 
+    # AI Comment
+    try:
+        prompt = f"""
 Coin: {coin}
 Haber duyarlılığı: {news_result['sentiment']}
-Teknik analiz sinyali: {tech_result['signal']}
+Teknik sinyal: {tech_result['signal']}
 Genel öneri: {final_signal}
 
-Kullanıcıya 1 cümleyle samimi, kısa ve analiz odaklı bir yatırım yorumu yap.
-Yatırım tavsiyesi verme, sadece durumun özetini sade bir dille paylaş.
+Yatırımcı dostu, kısa, içten ve sade bir analiz yorumu yap. Tahminde bulunma.
 """
-        response = client.chat.completions.create(
+        chat_response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Sen Coinspace adında bir kripto yatırım analiz asistanısın."},
-                {"role": "user", "content": ai_prompt}
+                {"role": "system", "content": "Sen Coinspace adında bir kripto analiz asistanısın."},
+                {"role": "user", "content": prompt}
             ]
         )
-        ai_comment = response.choices[0].message.content.strip()
+        ai_comment = chat_response.choices[0].message.content.strip()
     except Exception as e:
         print(f"AI comment error: {e}")
         ai_comment = "N/A"
-
-    # Kaldıraç önerisi
-    if final_signal == "BUY":
-        leverage = "Önerilen kaldıraç: 5x"
-    elif final_signal == "SELL":
-        leverage = "Short için önerilen kaldıraç: 3x"
-    else:
-        leverage = "Kaldıraç önerilmiyor, piyasa kararsız."
 
     return {
         "price": price,
@@ -82,6 +79,6 @@ Yatırım tavsiyesi verme, sadece durumun özetini sade bir dille paylaş.
         "entry": entry,
         "stop_loss": stop_loss,
         "take_profit": take_profit,
-        "ai_comment": ai_comment,
-        "leverage": leverage
+        "leverage": leverage,
+        "ai_comment": ai_comment
     }
