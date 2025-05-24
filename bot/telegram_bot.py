@@ -66,6 +66,7 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📥 Entry Point: {signal_result.get('entry', 'N/A')}\n"
             f"🛑 Stop Loss: {signal_result.get('stop_loss', 'N/A')}\n"
             f"🎯 Take Profit: {signal_result.get('take_profit', 'N/A')}\n"
+            f"⚖️ Leverage Suggestion: {signal_result.get('leverage', 'N/A')}"
         )
     else:
         message += (
@@ -74,6 +75,7 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     await update.message.reply_text(message, parse_mode="Markdown")
+
 
 async def news(update: Update, context: ContextTypes.DEFAULT_TYPE):
     coin = context.args[0].upper() if context.args else None
@@ -183,7 +185,6 @@ def setup_handlers(app: Application):
     app.add_handler(CommandHandler("summary", summary))
     app.add_handler(CommandHandler("realtime", realtime))
     print("📌 Komutlar başarıyla yüklendi")
-
 
     scheduler = AsyncIOScheduler()
     scheduler.add_job(lambda: app.create_task(send_market_summary(app.bot)), "cron", hour=21, minute=0)
