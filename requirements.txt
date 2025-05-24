@@ -4,6 +4,6 @@ python-telegram-bot
 requests
 python-dotenv
 apscheduler
-openai
+openai>=1.0.0
 yfinance
 ta
