@@ -2,6 +2,7 @@ from analysis.news_analyzer import analyze_news
 from analysis.technical_analyzer import get_technical_analysis
 import openai
 import os
+import requests
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -44,14 +45,26 @@ def generate_signal(coin):
 
     # AI comment üret
     try:
-        ai_prompt = f"Coin: {coin}\nNews sentiment: {news_result['sentiment']}\nTechnical signal: {tech_result['signal']}\nFinal signal: {final_signal}\nWhat is your brief AI-based comment or outlook?"
+        ai_prompt = f"""
+Sen Coinspace adında kullanıcı dostu bir kripto analiz asistanısın.
+
+Coin: {coin}
+Haber duyarlılığı: {news_result['sentiment']}
+Teknik analiz sinyali: {tech_result['signal']}
+Genel öneri: {final_signal}
+
+Kullanıcıya 1 cümleyle samimi, kısa ve analiz odaklı bir yatırım yorumu yap.
+Yatırım tavsiyesi verme, sadece durumun özetini sade bir dille paylaş.
+"""
+
         ai_comment = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a professional crypto trading assistant."},
+                {"role": "system", "content": "Sen Coinspace adında bir kripto yatırım analiz asistanısın."},
                 {"role": "user", "content": ai_prompt}
             ]
         ).choices[0].message.content.strip()
+
     except Exception as e:
         print(f"AI comment error: {e}")
         ai_comment = "N/A"
