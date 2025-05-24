@@ -29,15 +29,15 @@ def generate_signal(coin):
     else:
         final_signal = "HOLD"
 
-    # Fiyat verisi, entry, SL, TP
+    # Fiyat, Entry, SL, TP
     try:
         price_url = f"https://api.binance.com/api/v3/ticker/price?symbol={coin.upper()}"
         price_response = requests.get(price_url, timeout=10)
         price = float(price_response.json().get("price", 0))
 
         entry = round(price, 4)
-        stop_loss = round(price * 0.97, 4)
-        take_profit = round(price * 1.05, 4)
+        stop_loss = round(price * 0.97, 4)  # %3 aşağı
+        take_profit = round(price * 1.05, 4)  # %5 yukarı
     except Exception as e:
         print(f"Price fetch error: {e}")
         price = "N/A"
@@ -51,7 +51,7 @@ def generate_signal(coin):
     else:
         leverage = "Kaldıraç önerilmez (belirsiz trend)"
 
-    # AI Comment üret
+    # AI Comment üretimi (kısa ve yatırımcı dostu)
     try:
         prompt = f"""
 Coin: {coin}
@@ -59,7 +59,7 @@ Haber duyarlılığı: {news_result['sentiment']}
 Teknik analiz sinyali: {tech_result['signal']}
 Genel öneri: {final_signal}
 
-Kullanıcı dostu, kısa, net, içten bir analiz özeti yap. Tahminde bulunma. Yatırım tavsiyesi verme.
+Kullanıcı dostu, kısa, net, içten bir analiz özeti yap. Yatırım tavsiyesi verme. Tahmin yürütme.
 """
         chat_response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
