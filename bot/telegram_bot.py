@@ -10,8 +10,11 @@ from analysis.news_analyzer import analyze_news
 from analysis.technical_analyzer import get_technical_analysis
 from utils.helpers import format_signal_result
 from config.config import PREMIUM_IDS, SUMMARY_CHAT_ID
-from utils.watchlist_manager import add_coin_to_watchlist, remove_coin_from_watchlist, get_user_watchlist
-
+from utils.watchlist_manager import (
+add_coin_to_watchlist, 
+remove_coin_from_watchlist, 
+get_user_watchlist
+)
 
 
 load_dotenv()
